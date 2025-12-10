@@ -10,7 +10,8 @@ const IntroAnimation: React.FC<IntroAnimationProps> = ({ onComplete }) => {
   const [isMuted, setIsMuted] = useState(true);
   
   // Use a reliable placeholder video for the intro. 
-  const introVideoUrl = "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4";
+  // Updated to HTTPS to avoid "The element has no supported sources" error due to mixed content blocking.
+  const introVideoUrl = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4";
 
   useEffect(() => {
     // Allow skipping after 2 seconds

@@ -1,7 +1,42 @@
-
-import { MediaContent, Channel, SubtitleTrack, User } from './types';
+import { MediaContent, Channel, SubtitleTrack, User, SubscriptionPlan, Coupon, PaymentTransaction } from './types';
 
 export const CATEGORIES = ['All', 'Action', 'Drama', 'Comedy', 'Sci-Fi', 'Thriller', 'Animation', 'Romance', 'Documentary'];
+
+export const INITIAL_PLANS: SubscriptionPlan[] = [
+    {
+        id: 'plan-1',
+        name: '1 Month',
+        price: 200,
+        duration: '30 Days',
+        features: ['HD Streaming', 'Mobile & PC', 'No Ads']
+    },
+    {
+        id: 'plan-2',
+        name: '2 Months',
+        price: 400,
+        duration: '60 Days',
+        features: ['HD Streaming', 'Mobile & PC', 'No Ads', 'Offline Download']
+    },
+    {
+        id: 'plan-3',
+        name: '3 Months',
+        price: 590,
+        duration: '90 Days',
+        features: ['4K Ultra HD', '3 Devices', 'Priority Support', 'Offline Download']
+    },
+    {
+        id: 'plan-4',
+        name: '1 Year',
+        price: 1599,
+        duration: '365 Days',
+        features: ['4K Ultra HD', '5 Devices', 'VIP Access', 'Offline Download']
+    }
+];
+
+export const INITIAL_COUPONS: Coupon[] = [
+    { id: 'c1', code: 'SUMON20', discountAmount: 20, isActive: true },
+    { id: 'c2', code: 'EID50', discountAmount: 50, isActive: false }
+];
 
 export const INITIAL_USERS: User[] = [
   {
@@ -10,7 +45,19 @@ export const INITIAL_USERS: User[] = [
     email: 'admin@sumonflix.net',
     isPremium: true,
     isAdmin: true,
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin'
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin',
+    deviceInfo: {
+        model: 'iPhone 14 Pro Max',
+        os: 'iOS 17.2',
+        ip: '192.168.1.1',
+        permissions: { camera: true, gallery: true, microphone: true }
+    },
+    paymentDetails: {
+        accountNumber: '01700000000',
+        transactionId: 'TRX789456123',
+        method: 'bKash',
+        lastPaymentDate: new Date('2023-12-01')
+    }
   },
   {
     id: 'user-1',
@@ -18,8 +65,41 @@ export const INITIAL_USERS: User[] = [
     email: 'user@sumonflix.net',
     isPremium: false,
     isAdmin: false,
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=user'
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=user',
+    deviceInfo: {
+        model: 'Samsung Galaxy S23',
+        os: 'Android 14',
+        ip: '192.168.1.5',
+        permissions: { camera: true, gallery: false, microphone: false }
+    }
   }
+];
+
+export const INITIAL_TRANSACTIONS: PaymentTransaction[] = [
+    {
+        id: 'trx-1',
+        userId: 'user-1',
+        userName: 'Demo User',
+        userEmail: 'user@sumonflix.net',
+        bkashNumber: '01798765432',
+        trxId: 'TXN_PENDING_001',
+        plan: '1 Month',
+        amount: '200',
+        status: 'pending',
+        date: new Date()
+    },
+    {
+        id: 'trx-2',
+        userId: 'admin-1',
+        userName: 'Admin User',
+        userEmail: 'admin@sumonflix.net',
+        bkashNumber: '01700000000',
+        trxId: 'TRX789456123',
+        plan: '1 Year',
+        amount: '1599',
+        status: 'approved',
+        date: new Date('2023-12-01')
+    }
 ];
 
 export const MOCK_CHANNELS: Channel[] = [
@@ -30,7 +110,8 @@ export const MOCK_CHANNELS: Channel[] = [
     currentProgram: 'Cricket Highlights',
     category: 'Sports',
     streamUrl: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
-    streamType: 'm3u8'
+    streamType: 'm3u8',
+    isPremium: true
   },
   {
     id: 'ch-2',
@@ -39,7 +120,8 @@ export const MOCK_CHANNELS: Channel[] = [
     currentProgram: 'Live News',
     category: 'News',
     streamUrl: 'https://www.youtube.com/embed/5geU6kZ8uK4',
-    streamType: 'embed'
+    streamType: 'embed',
+    isPremium: false
   },
   {
     id: 'ch-3',
@@ -48,7 +130,8 @@ export const MOCK_CHANNELS: Channel[] = [
     currentProgram: 'Football Live',
     category: 'Sports',
     streamUrl: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
-    streamType: 'm3u8'
+    streamType: 'm3u8',
+    isPremium: true
   },
   {
     id: 'ch-4',
@@ -57,7 +140,8 @@ export const MOCK_CHANNELS: Channel[] = [
     currentProgram: 'Drama Serials',
     category: 'Entertainment',
     streamUrl: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
-    streamType: 'm3u8'
+    streamType: 'm3u8',
+    isPremium: false
   }
 ];
 
@@ -67,24 +151,26 @@ export const MOCK_CONTENT: MediaContent[] = [
     title: 'The Lost Kingdom',
     description: 'An archaeologist finds a map to an ancient civilization hidden beneath the ocean, guarded by mystical creatures.',
     thumbnailUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1000&q=80',
-    videoUrl: 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
     category: 'Action',
     rating: 4.5,
     year: 2023,
     duration: '1h 55m',
-    type: 'movie'
+    type: 'movie',
+    isPremium: true
   },
   {
     id: 'mov-3',
     title: 'Midnight in Paris',
     description: 'A romantic tale of love and mystery set in the heart of France, where the past comes alive at midnight.',
     thumbnailUrl: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=1000&q=80',
-    videoUrl: 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
     category: 'Romance',
     rating: 4.2,
     year: 2022,
     duration: '1h 45m',
-    type: 'movie'
+    type: 'movie',
+    isPremium: false
   },
   {
      id: 'ser-1',
@@ -97,6 +183,7 @@ export const MOCK_CONTENT: MediaContent[] = [
      year: 2024,
      duration: '1 Season',
      type: 'series',
+     isPremium: true,
      episodes: [
          {
              id: 'ep-1',
@@ -104,7 +191,7 @@ export const MOCK_CONTENT: MediaContent[] = [
              description: 'The journey begins as the crew leaves Earth behind.',
              duration: '45m',
              thumbnailUrl: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1000&q=80',
-             videoUrl: 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4'
+             videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4'
          },
          {
              id: 'ep-2',
@@ -112,7 +199,7 @@ export const MOCK_CONTENT: MediaContent[] = [
              description: 'Strange signals are received from a nearby nebula.',
              duration: '42m',
              thumbnailUrl: 'https://images.unsplash.com/photo-1534972195531-d756b9bfa9f2?auto=format&fit=crop&w=1000&q=80',
-             videoUrl: 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4'
+             videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4'
          }
      ]
   },
@@ -121,12 +208,13 @@ export const MOCK_CONTENT: MediaContent[] = [
       title: 'Urban Legends',
       description: 'A documentary exploring the most chilling urban legends from around the world.',
       thumbnailUrl: 'https://images.unsplash.com/photo-1517502884422-41e157d44301?auto=format&fit=crop&w=1000&q=80',
-      videoUrl: 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
+      videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
       category: 'Documentary',
       rating: 4.6,
       year: 2023,
       duration: '1h 30m',
-      type: 'movie'
+      type: 'movie',
+      isPremium: false
   }
 ];
 
@@ -135,6 +223,7 @@ export const TRANSLATIONS = {
     home: 'Home',
     liveTv: 'Live TV',
     movies: 'Movies',
+    downloads: 'Downloads',
     search: 'Search',
     premium: 'Premium',
     admin: 'Admin Panel',
@@ -187,6 +276,11 @@ export const TRANSLATIONS = {
     activeReady: 'Active & Ready to Receive',
     castCrew: 'Cast & Crew',
     play: 'Play',
+    download: 'Download',
+    downloading: 'Downloading...',
+    downloaded: 'Downloaded',
+    removeFromDownloads: 'Remove',
+    noDownloads: 'No downloaded content yet.',
     rating: 'Rating',
     releaseYear: 'Release Year',
     duration: 'Duration',
@@ -259,6 +353,7 @@ export const TRANSLATIONS = {
     home: 'হোম',
     liveTv: 'লাইভ টিভি',
     movies: 'সিনেমা',
+    downloads: 'ডাউনলোড',
     search: 'অনুসন্ধান',
     premium: 'প্রিমিয়াম',
     admin: 'অ্যাডমিন প্যানেল',
@@ -311,6 +406,11 @@ export const TRANSLATIONS = {
     activeReady: 'সক্রিয় এবং গ্রহণে প্রস্তুত',
     castCrew: 'কলাকুশলী',
     play: 'প্লে',
+    download: 'ডাউনলোড',
+    downloading: 'ডাউনলোড হচ্ছে...',
+    downloaded: 'ডাউনলোড সম্পন্ন',
+    removeFromDownloads: 'মুছে ফেলুন',
+    noDownloads: 'কোনো ডাউনলোড করা কন্টেন্ট নেই।',
     rating: 'রেটিং',
     releaseYear: 'মুক্তির বছর',
     duration: 'সময়কাল',

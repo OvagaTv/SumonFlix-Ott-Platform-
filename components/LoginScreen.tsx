@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Play, Lock, Mail, ArrowRight, ShieldCheck, AlertCircle, Globe, KeyRound, ArrowLeft, CheckCircle, Smile, Image as ImageIcon } from 'lucide-react';
+import { Play, Lock, Mail, ArrowRight, ShieldCheck, AlertCircle, Globe, KeyRound, ArrowLeft, CheckCircle, Smile, Image as ImageIcon, X } from 'lucide-react';
 import { User } from '../types';
 
 interface LoginScreenProps {
@@ -22,9 +22,13 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, language, onToggleLa
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [showVerification, setShowVerification] = useState(false);
+  const [pendingUser, setPendingUser] = useState<User | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading) return;
+
     setError('');
     setSuccess('');
     setIsLoading(true);
@@ -66,14 +70,18 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, language, onToggleLa
         return;
       }
       
-      onLogin({
+      const newUser: User = {
         id: `user-${Date.now()}`,
         name: name,
         coverName: coverName || undefined,
         email: email,
         isPremium: true, // Bonus for new signups
         avatar: avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`
-      });
+      };
+
+      setPendingUser(newUser);
+      setShowVerification(true);
+      setIsLoading(false);
     } else if (mode === 'forgot') {
         // Mock Password Reset Logic
         if (!email || !newPassword) {
@@ -105,6 +113,13 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, language, onToggleLa
             setSuccess('');
         }, 2000);
         return;
+    }
+  };
+
+  const handleVerificationDismiss = () => {
+    setShowVerification(false);
+    if (pendingUser) {
+        onLogin(pendingUser);
     }
   };
 
@@ -282,11 +297,14 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, language, onToggleLa
               <button 
                 type="submit" 
                 disabled={isLoading}
-                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-blue-600/20 active:scale-[0.98] flex items-center justify-center gap-2 mt-4 animate-fade-in-up"
+                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-blue-600/20 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed disabled:active:scale-100 flex items-center justify-center gap-2 mt-4 animate-fade-in-up"
                 style={{ animationDelay: '200ms' }}
               >
                 {isLoading ? (
-                  <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  <>
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    <span className="text-white/80">Processing...</span>
+                  </>
                 ) : (
                   <>
                     {mode === 'signin' ? t.signIn : (mode === 'signup' ? t.createAccount : t.updatePassword)}
@@ -323,6 +341,34 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, language, onToggleLa
            &copy; {new Date().getFullYear()} sumonflix.net. All rights reserved.
         </div>
       </div>
+      
+      {/* Verification Modal */}
+      {showVerification && (
+        <div className="absolute inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-6 animate-fade-in">
+             <div className="bg-slate-900 border border-slate-700 rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl relative transform scale-100 transition-all">
+                <div className="w-20 h-20 bg-blue-600/20 rounded-full flex items-center justify-center mx-auto mb-6 ring-4 ring-blue-600/10">
+                   <Mail size={40} className="text-blue-500" />
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-3">Check your inbox</h3>
+                <p className="text-slate-400 text-sm mb-8 leading-relaxed">
+                   We've sent a verification link to <br/>
+                   <span className="font-bold text-white">{pendingUser?.email}</span>.
+                </p>
+                <button 
+                  onClick={handleVerificationDismiss}
+                  className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-blue-600/20 active:scale-[0.98]"
+                >
+                  I'll check later, let me in!
+                </button>
+                <button 
+                    onClick={handleVerificationDismiss}
+                    className="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-full"
+                >
+                   <X size={20} />
+                </button>
+             </div>
+        </div>
+      )}
     </div>
   );
 };

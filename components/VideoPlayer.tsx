@@ -26,6 +26,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   onProgressUpdate
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
   const [volume, setVolume] = useState(1);
@@ -230,6 +231,29 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     };
   }, [content, isIframeContent]);
 
+  // Fullscreen unlock listener
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement) {
+        // Unlock orientation if exited fullscreen
+        if (window.screen && window.screen.orientation && window.screen.orientation.unlock) {
+          try {
+            window.screen.orientation.unlock();
+          } catch (e) {
+            console.log('Unlock failed or not supported');
+          }
+        }
+      }
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange); // iOS/Safari legacy
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
   // Check Download Status
   useEffect(() => {
     if (isLive) return;
@@ -276,6 +300,33 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     volumeTimeoutRef.current = setTimeout(() => {
       setVolumeOSD(prev => ({ ...prev, show: false }));
     }, 2000);
+  };
+
+  const toggleFullScreen = async () => {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+        if (window.screen && window.screen.orientation && window.screen.orientation.unlock) {
+           window.screen.orientation.unlock();
+        }
+      } else if (containerRef.current && containerRef.current.requestFullscreen) {
+        await containerRef.current.requestFullscreen();
+        // Attempt to lock orientation to landscape
+        // Cast to any to avoid TypeScript error: Property 'lock' does not exist on type 'ScreenOrientation'
+        if (window.screen && window.screen.orientation && (window.screen.orientation as any).lock) {
+            try {
+                await (window.screen.orientation as any).lock('landscape');
+            } catch (e) {
+                console.log('Orientation lock failed:', e);
+            }
+        }
+      } else if (videoRef.current && (videoRef.current as any).webkitEnterFullscreen) {
+        // iOS Safari fallback
+        (videoRef.current as any).webkitEnterFullscreen();
+      }
+    } catch (err) {
+      console.error("Error toggling fullscreen:", err);
+    }
   };
 
   // Remote Control / Keyboard Listeners
@@ -421,14 +472,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     setIsMuted(newVol === 0);
   };
 
-  const toggleFullScreen = () => {
-    if (document.fullscreenElement) {
-      document.exitFullscreen();
-    } else {
-      document.documentElement.requestFullscreen();
-    }
-  };
-
   const togglePiP = async () => {
     if (isIframeContent) return;
     if (videoRef.current && document.pictureInPictureEnabled) {
@@ -559,6 +602,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   return (
     <div 
+      ref={containerRef}
       className={containerClasses}
       onMouseMove={handleUserActivity}
       onTouchStart={handleUserActivity}

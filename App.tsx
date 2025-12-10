@@ -6,7 +6,7 @@ import {
   MessageSquare, HelpCircle, User as UserIcon, Plus, Trash,
   Upload, Sparkles, Smartphone, CheckCircle, AlertCircle, 
   DollarSign, Ticket, Image as ImageIcon, Video, Mic, Smartphone as Phone,
-  FileText, Lock, Mail, ChevronRight, Facebook, Send, ArrowLeft, Share2, List, BadgeCheck
+  FileText, Lock, Mail, ChevronRight, Facebook, Send, ArrowLeft, Share2, List, BadgeCheck, BellRing, MapPin, Code
 } from 'lucide-react';
 import LoginScreen from './components/LoginScreen';
 import IntroAnimation from './components/IntroAnimation';
@@ -82,6 +82,7 @@ const App: React.FC = () => {
   // Derived State
   const t = TRANSLATIONS[language];
   const heroContent = movies[0];
+  const unreadCount = user?.notifications?.filter(n => !n.read).length || 0;
 
   // Initialize Theme & Load History
   useEffect(() => {
@@ -333,12 +334,13 @@ const App: React.FC = () => {
       const email = formData.get('email') as string;
       const avatar = previewAvatar || (formData.get('avatar') as string) || editingItem?.avatar;
       const isPremium = formData.get('isPremium') === 'on';
+      const isAdmin = formData.get('isAdmin') === 'on';
       
       if (editingItem) {
           // Edit Mode
-          setAllUsers(allUsers.map(u => u.id === editingItem.id ? { ...u, name, email, avatar, isPremium } : u));
+          setAllUsers(allUsers.map(u => u.id === editingItem.id ? { ...u, name, email, avatar, isPremium, isAdmin } : u));
           if (user && user.id === editingItem.id) {
-               setUser({ ...user, name, email, avatar, isPremium });
+               setUser({ ...user, name, email, avatar, isPremium, isAdmin });
           }
       } else {
           // Add Mode
@@ -348,7 +350,7 @@ const App: React.FC = () => {
               email,
               avatar: avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`,
               isPremium,
-              isAdmin: false
+              isAdmin: isAdmin
           };
           setAllUsers([...allUsers, newUser]);
       }
@@ -365,10 +367,59 @@ const App: React.FC = () => {
 
   const handleSendNotification = () => {
       if (!editingItem || !notificationText) return;
-      alert(`Notification sent to ${editingItem.name}: "${notificationText}"`);
+      
+      const newNotification = {
+          id: `notif-${Date.now()}`,
+          text: notificationText,
+          date: new Date(),
+          read: false
+      };
+
+      setAllUsers(prev => prev.map(u => {
+          if (u.id === editingItem.id) {
+              return {
+                  ...u,
+                  notifications: [newNotification, ...(u.notifications || [])]
+              };
+          }
+          return u;
+      }));
+
+      // If sending to self
+      if (user && user.id === editingItem.id) {
+          setUser(prev => {
+              if (!prev) return null;
+              return {
+                  ...prev,
+                  notifications: [newNotification, ...(prev.notifications || [])]
+              };
+          });
+      }
+
+      alert(`Notification sent to ${editingItem.name}`);
       setIsNotifyModalOpen(false);
       setNotificationText('');
       setEditingItem(null);
+  };
+
+  const handleMarkNotificationsRead = () => {
+      if (!user) return;
+      const updatedUser = {
+          ...user,
+          notifications: user.notifications?.map(n => ({...n, read: true})) || []
+      };
+      setUser(updatedUser);
+      setAllUsers(prev => prev.map(u => u.id === user.id ? updatedUser : u));
+  };
+
+  const handleDeleteNotification = (notifId: string) => {
+      if (!user) return;
+      const updatedUser = {
+          ...user,
+          notifications: user.notifications?.filter(n => n.id !== notifId) || []
+      };
+      setUser(updatedUser);
+      setAllUsers(prev => prev.map(u => u.id === user.id ? updatedUser : u));
   };
 
   const handleSaveContent = (e: React.FormEvent) => {
@@ -423,10 +474,11 @@ const App: React.FC = () => {
       const name = formData.get('name') as string;
       const streamUrl = formData.get('streamUrl') as string;
       const logo = previewChannelLogo || (formData.get('logo') as string) || editingItem?.logo || 'https://via.placeholder.com/150';
+      const category = formData.get('category') as string;
       const isPremium = formData.get('isPremium') === 'on';
 
       if(editingItem) {
-          setChannels(channels.map(c => c.id === editingItem.id ? { ...c, name, streamUrl, logo, isPremium } : c));
+          setChannels(channels.map(c => c.id === editingItem.id ? { ...c, name, streamUrl, logo, category, isPremium } : c));
       } else {
           const newChannel: Channel = {
               id: `ch-${Date.now()}`,
@@ -434,7 +486,7 @@ const App: React.FC = () => {
               streamUrl,
               logo: logo,
               currentProgram: 'Live Stream',
-              category: 'General',
+              category: category || 'General',
               isPremium
           };
           setChannels([...channels, newChannel]);
@@ -804,6 +856,29 @@ const App: React.FC = () => {
                             <span className="font-semibold">{t.downloads}</span>
                         </button>
                         
+                        {/* Notifications Button */}
+                        <button 
+                            onClick={() => { setViewState(ViewState.NOTIFICATIONS); setIsMobileMenuOpen(false); }}
+                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${viewState === ViewState.NOTIFICATIONS ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-slate-400 hover:text-white hover:bg-white/5'} relative`}
+                        >
+                            <BellRing size={20} />
+                            <span className="font-semibold">{t.notifications}</span>
+                            {unreadCount > 0 && (
+                                <span className="absolute right-4 top-1/2 -translate-y-1/2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                    {unreadCount}
+                                </span>
+                            )}
+                        </button>
+
+                        {/* Help Button */}
+                        <button 
+                            onClick={() => { setIsHelpModalOpen(true); setIsMobileMenuOpen(false); }}
+                            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors text-slate-400 hover:text-white hover:bg-white/5"
+                        >
+                            <HelpCircle size={20} />
+                            <span className="font-semibold">{t.help || 'Help'}</span>
+                        </button>
+
                         {/* Premium Subscription Button */}
                         <button 
                             onClick={() => { setViewState(ViewState.PREMIUM); setIsMobileMenuOpen(false); }}
@@ -869,6 +944,7 @@ const App: React.FC = () => {
 
                      {/* Content based on State */}
                      <div className="p-4 lg:p-8 pb-24 max-w-[1600px] mx-auto">
+                         {/* ... (Previous Views: HOME, MOVIES, LIVE_TV, SEARCH, DOWNLOADS) ... */}
                          {viewState === ViewState.HOME && (
                              <div className="space-y-8 animate-fade-in">
                                  {/* Continue Watching */}
@@ -1065,6 +1141,7 @@ const App: React.FC = () => {
 
                          {viewState === ViewState.SEARCH && (
                             <div className="space-y-6 animate-fade-in max-w-4xl mx-auto">
+                                {/* Search Logic ... */}
                                 <div className="relative">
                                     <input 
                                         type="text" 
@@ -1144,6 +1221,62 @@ const App: React.FC = () => {
                              </div>
                          )}
 
+                         {viewState === ViewState.NOTIFICATIONS && (
+                            <div className="max-w-4xl mx-auto py-8 animate-fade-in">
+                                <div className="flex justify-between items-center mb-8">
+                                    <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                                        <BellRing size={24} className="text-blue-500" /> 
+                                        Notifications
+                                    </h2>
+                                    {unreadCount > 0 && (
+                                        <button 
+                                            onClick={handleMarkNotificationsRead}
+                                            className="text-sm text-blue-400 hover:text-white font-medium hover:underline"
+                                        >
+                                            Mark all as read
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="space-y-4">
+                                    {user.notifications && user.notifications.length > 0 ? (
+                                        user.notifications.map((notif) => (
+                                            <div 
+                                                key={notif.id} 
+                                                className={`bg-slate-800 rounded-xl p-5 border transition-colors relative group ${notif.read ? 'border-slate-700 opacity-80' : 'border-blue-500/50 shadow-lg shadow-blue-900/20'}`}
+                                            >
+                                                <div className="flex items-start justify-between gap-4">
+                                                    <div>
+                                                        <div className="flex items-center gap-2 mb-2">
+                                                            <div className={`w-2 h-2 rounded-full ${notif.read ? 'bg-slate-500' : 'bg-blue-500'}`}></div>
+                                                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                                                Admin Message
+                                                            </span>
+                                                            <span className="text-xs text-slate-500">
+                                                                {new Date(notif.date).toLocaleString()}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-slate-200 leading-relaxed whitespace-pre-wrap">{notif.text}</p>
+                                                    </div>
+                                                    <button 
+                                                        onClick={() => handleDeleteNotification(notif.id)}
+                                                        className="p-2 text-slate-500 hover:text-red-400 rounded-full hover:bg-slate-700/50 transition-colors opacity-0 group-hover:opacity-100"
+                                                        title="Delete"
+                                                    >
+                                                        <Trash size={16} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="text-center py-20 bg-slate-800/30 rounded-2xl border border-slate-700/50">
+                                            <Bell size={48} className="mx-auto mb-4 text-slate-600" />
+                                            <p className="text-slate-400 font-medium">{t.noNotifications}</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                         )}
+
                          {viewState === ViewState.ADMIN && user.isAdmin && (
                              <div className="p-4 bg-slate-800/50 rounded-2xl border border-slate-700 animate-fade-in">
                                  <div className="flex items-center gap-4 mb-8">
@@ -1182,6 +1315,82 @@ const App: React.FC = () => {
                                      ))}
                                  </div>
                                  
+                                 {adminTab === 'users' && (
+                                     <div className="animate-fade-in">
+                                         <div className="flex justify-between items-center mb-4">
+                                             <h3 className="text-xl font-bold text-white">Manage Users</h3>
+                                             <button onClick={() => { setEditingItem(null); setIsUserModalOpen(true); }} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2">
+                                                 <Plus size={16} /> Add User
+                                             </button>
+                                         </div>
+                                         <div className="bg-slate-800 rounded-xl overflow-hidden border border-slate-700">
+                                             <div className="overflow-x-auto">
+                                                 <table className="w-full text-left">
+                                                     <thead className="bg-slate-900/50 text-slate-400 text-xs uppercase font-bold">
+                                                         <tr>
+                                                             <th className="p-4">User</th>
+                                                             <th className="p-4">Email</th>
+                                                             <th className="p-4">Status</th>
+                                                             <th className="p-4">Role</th>
+                                                             <th className="p-4">Actions</th>
+                                                         </tr>
+                                                     </thead>
+                                                     <tbody className="divide-y divide-slate-700">
+                                                         {allUsers.map(u => (
+                                                             <tr key={u.id} className="hover:bg-slate-700/30 transition-colors">
+                                                                 <td className="p-4">
+                                                                     <div className="flex items-center gap-3">
+                                                                         <img src={u.avatar} alt={u.name} className="w-10 h-10 rounded-full bg-slate-700" />
+                                                                         <span className="font-bold text-white">{u.name}</span>
+                                                                     </div>
+                                                                 </td>
+                                                                 <td className="p-4 text-slate-300">{u.email}</td>
+                                                                 <td className="p-4">
+                                                                     {u.isPremium ? (
+                                                                         <span className="bg-yellow-500/20 text-yellow-500 px-2 py-1 rounded text-xs font-bold border border-yellow-500/30 flex items-center gap-1 w-fit">
+                                                                             <Crown size={12} /> Premium
+                                                                         </span>
+                                                                     ) : (
+                                                                         <span className="bg-slate-700 text-slate-400 px-2 py-1 rounded text-xs">Free</span>
+                                                                     )}
+                                                                 </td>
+                                                                 <td className="p-4">
+                                                                    {u.isAdmin ? <span className="text-purple-400 font-bold text-xs uppercase">Admin</span> : <span className="text-slate-500 text-xs uppercase">User</span>}
+                                                                 </td>
+                                                                 <td className="p-4">
+                                                                     <div className="flex gap-2">
+                                                                         <button 
+                                                                            onClick={() => { setEditingItem(u); setNotificationText(''); setIsNotifyModalOpen(true); }}
+                                                                            className="p-2 bg-blue-600/20 text-blue-400 rounded hover:bg-blue-600 hover:text-white transition-colors"
+                                                                            title="Send Notification"
+                                                                         >
+                                                                            <Bell size={16} />
+                                                                         </button>
+                                                                         <button 
+                                                                            onClick={() => { setEditingItem(u); setIsUserModalOpen(true); }}
+                                                                            className="p-2 bg-purple-600/20 text-purple-400 rounded hover:bg-purple-600 hover:text-white transition-colors"
+                                                                            title="Edit User"
+                                                                         >
+                                                                            <Edit size={16} />
+                                                                         </button>
+                                                                         <button 
+                                                                            onClick={() => handleDeleteUser(u.id)}
+                                                                            className="p-2 bg-red-600/20 text-red-400 rounded hover:bg-red-600 hover:text-white transition-colors"
+                                                                            title="Delete User"
+                                                                         >
+                                                                            <Trash size={16} />
+                                                                         </button>
+                                                                     </div>
+                                                                 </td>
+                                                             </tr>
+                                                         ))}
+                                                     </tbody>
+                                                 </table>
+                                             </div>
+                                         </div>
+                                     </div>
+                                 )}
+
                                  {adminTab === 'movies' && (
                                      <div className="animate-fade-in">
                                          <div className="flex justify-between items-center mb-4">
@@ -1373,7 +1582,7 @@ const App: React.FC = () => {
                                      </div>
                                  )}
 
-                                 {!['movies', 'livetv', 'finance'].includes(adminTab) && (
+                                 {!['movies', 'livetv', 'finance', 'users'].includes(adminTab) && (
                                     <div className="text-center py-12 text-slate-500">
                                         <p>Admin features for {adminTab} would be implemented here.</p>
                                     </div>
@@ -1472,6 +1681,74 @@ const App: React.FC = () => {
                 {/* Modals */}
                 {renderContentDetailsModal()}
                 
+                {/* Help Modal */}
+                {isHelpModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
+                        <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-md w-full relative shadow-2xl">
+                            <button onClick={() => setIsHelpModalOpen(false)} className="absolute top-4 right-4 text-slate-500 hover:text-white"><X size={20}/></button>
+                            
+                            <div className="text-center mb-6">
+                                <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-700">
+                                    <HelpCircle size={32} className="text-blue-500" />
+                                </div>
+                                <h3 className="text-2xl font-bold text-white">Official Contact</h3>
+                                <p className="text-slate-400 text-sm">We are here to help you</p>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700 flex items-start gap-4">
+                                    <div className="p-2 bg-blue-500/10 rounded-lg text-blue-500 mt-1">
+                                        <MapPin size={20} />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-bold text-white uppercase mb-1">Address</h4>
+                                        <p className="text-slate-300 text-sm">Vayadanga Bazare, Sreebardi Sherpur</p>
+                                    </div>
+                                </div>
+
+                                <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700 flex items-start gap-4">
+                                     <div className="p-2 bg-green-500/10 rounded-lg text-green-500 mt-1">
+                                        <Phone size={20} />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-bold text-white uppercase mb-1">Official Phone</h4>
+                                        <a href="tel:01609843481" className="text-slate-300 text-sm hover:text-white">01609843481</a>
+                                    </div>
+                                </div>
+
+                                <div className="border-t border-slate-700 pt-4 mt-2">
+                                    <h4 className="text-xs font-bold text-slate-500 uppercase mb-3 text-center tracking-wider">Apps Developer Contact</h4>
+                                    
+                                    <div className="grid grid-cols-1 gap-3">
+                                        <div className="bg-slate-800/50 p-3 rounded-xl border border-slate-700 flex items-center gap-3">
+                                             <div className="p-2 bg-purple-500/10 rounded-lg text-purple-500">
+                                                <Code size={18} />
+                                            </div>
+                                             <div className="min-w-0">
+                                                <p className="text-xs text-slate-500 font-bold uppercase">Developer Phone</p>
+                                                <a href="tel:01307280088" className="text-slate-300 text-sm hover:text-white truncate block">01307280088</a>
+                                            </div>
+                                        </div>
+                                        <div className="bg-slate-800/50 p-3 rounded-xl border border-slate-700 flex items-center gap-3">
+                                             <div className="p-2 bg-orange-500/10 rounded-lg text-orange-500">
+                                                <Mail size={18} />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="text-xs text-slate-500 font-bold uppercase">Email</p>
+                                                <a href="mailto:sumonflix.net@gmail.com" className="text-slate-300 text-sm hover:text-white truncate block">sumonflix.net@gmail.com</a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="mt-8 text-center">
+                                <p className="text-xs text-slate-500 font-medium">Powered By <span className="text-blue-500">Sumon Network</span></p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                
                 {/* Admin Modals */}
                 {isContentModalOpen && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
@@ -1529,6 +1806,24 @@ const App: React.FC = () => {
                                       <input name="name" defaultValue={editingItem?.name} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white outline-none focus:border-blue-500" required />
                                   </div>
                                   <div>
+                                      <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Category</label>
+                                      <input 
+                                         list="categories" 
+                                         name="category" 
+                                         defaultValue={editingItem?.category} 
+                                         className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white outline-none focus:border-blue-500" 
+                                         placeholder="Select or type a category..."
+                                      />
+                                      <datalist id="categories">
+                                          <option value="Sports" />
+                                          <option value="News" />
+                                          <option value="Entertainment" />
+                                          <option value="Movies" />
+                                          <option value="Music" />
+                                          <option value="Kids" />
+                                      </datalist>
+                                  </div>
+                                  <div>
                                       <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Stream URL (.m3u8 / Embed)</label>
                                       <input name="streamUrl" defaultValue={editingItem?.streamUrl} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white outline-none focus:border-blue-500" required />
                                   </div>
@@ -1553,6 +1848,84 @@ const App: React.FC = () => {
                               </form>
                          </div>
                      </div>
+                )}
+
+                {isUserModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                        <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-lg w-full relative">
+                             <button onClick={() => setIsUserModalOpen(false)} className="absolute top-4 right-4 text-slate-500 hover:text-white"><X size={20}/></button>
+                             <h3 className="text-xl font-bold text-white mb-6">{editingItem ? 'Edit User' : 'Add New User'}</h3>
+                             <form onSubmit={handleSaveUser} className="space-y-4">
+                                 <div>
+                                     <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Full Name</label>
+                                     <input name="name" defaultValue={editingItem?.name} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white outline-none focus:border-blue-500" required />
+                                 </div>
+                                 <div>
+                                     <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Email Address</label>
+                                     <input type="email" name="email" defaultValue={editingItem?.email} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white outline-none focus:border-blue-500" required />
+                                 </div>
+                                 <div>
+                                     <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Avatar URL</label>
+                                     <div className="flex gap-2">
+                                        <input name="avatar" defaultValue={editingItem?.avatar} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white outline-none focus:border-blue-500" placeholder="https://..." />
+                                        <div className="relative">
+                                            <input type="file" onChange={handleAvatarFileChange} accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" />
+                                            <button type="button" className="bg-slate-700 hover:bg-slate-600 text-white p-2 rounded-lg border border-slate-600"><Upload size={20}/></button>
+                                        </div>
+                                     </div>
+                                     {previewAvatar && <img src={previewAvatar} className="w-10 h-10 mt-2 rounded-full object-cover bg-slate-700" />}
+                                 </div>
+                                 <div className="flex flex-col gap-3 pt-2">
+                                     <div className="flex items-center gap-2">
+                                         <input type="checkbox" name="isPremium" id="isUserPremium" defaultChecked={editingItem?.isPremium} className="w-5 h-5 rounded border-slate-700 bg-slate-800 text-blue-600 focus:ring-offset-0 focus:ring-0" />
+                                         <label htmlFor="isUserPremium" className="text-sm font-bold text-white flex items-center gap-2 cursor-pointer">
+                                             <Crown size={14} className="text-yellow-500" fill="currentColor" /> Premium User Status
+                                         </label>
+                                     </div>
+                                     <div className="flex items-center gap-2">
+                                         <input type="checkbox" name="isAdmin" id="isUserAdmin" defaultChecked={editingItem?.isAdmin} className="w-5 h-5 rounded border-slate-700 bg-slate-800 text-purple-600 focus:ring-offset-0 focus:ring-0" />
+                                         <label htmlFor="isUserAdmin" className="text-sm font-bold text-white flex items-center gap-2 cursor-pointer">
+                                             <Shield size={14} className="text-purple-500" fill="currentColor" /> Admin Privileges
+                                         </label>
+                                     </div>
+                                 </div>
+                                 <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition-colors mt-4">Save User</button>
+                             </form>
+                        </div>
+                    </div>
+                )}
+
+                {isNotifyModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                        <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-md w-full relative">
+                             <button onClick={() => setIsNotifyModalOpen(false)} className="absolute top-4 right-4 text-slate-500 hover:text-white"><X size={20}/></button>
+                             <div className="flex items-center gap-3 mb-6">
+                                <div className="p-3 bg-blue-600/20 rounded-full text-blue-500">
+                                    <Bell size={24} />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-bold text-white">Send Notification</h3>
+                                    <p className="text-xs text-slate-400">To: {editingItem?.name}</p>
+                                </div>
+                             </div>
+                             
+                             <textarea 
+                                value={notificationText}
+                                onChange={(e) => setNotificationText(e.target.value)}
+                                className="w-full bg-slate-800 border border-slate-700 rounded-xl p-4 text-white outline-none focus:border-blue-500 min-h-[120px] mb-4 resize-none"
+                                placeholder="Type your message here..."
+                                autoFocus
+                             />
+                             
+                             <button 
+                                onClick={handleSendNotification}
+                                disabled={!notificationText.trim()}
+                                className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
+                             >
+                                 <Send size={18} /> Send Message
+                             </button>
+                        </div>
+                    </div>
                 )}
             </>
         )}
